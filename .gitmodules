@@ -1,0 +1,3 @@
+[submodule "s2-geometry-library"]
+	path = s2-geometry-library
+	url = https://github.com/yjwong/s2-geometry-library.git
