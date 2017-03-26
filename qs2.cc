@@ -16,6 +16,12 @@
 #define KXVER 3
 #include "k.h"
 
+#ifndef NDEBUG
+#define DEBUGF   /* nothing */
+#else
+#define DEBUGF(fmt, ...)     fprintf(stderr, fmt, ##__VA_ARGS__)
+#endif
+
 //
 // Validation
 //
@@ -44,6 +50,7 @@ bool is_valid_latlon_loop(K lat, K lon)
 
 unique_ptr<S2LatLngRect> rect_from_points(K pt_lat, K pt_lon)
 {
+    DEBUGF("rect_from_points\n");
     assert(is_valid_latlon_rect(pt_lat, pt_lon));
 
     return unique_ptr<S2LatLngRect>(S2LatLngRect::FromPointPair(S2LatLng::FromDegrees(kF(pt_lat)[0], kF(pt_lon)[0]),
@@ -52,6 +59,7 @@ unique_ptr<S2LatLngRect> rect_from_points(K pt_lat, K pt_lon)
 
 unique_ptr<S2Loop> loop_from_points(K pt_lat, K pt_lon)
 {
+    DEBUGF("loop_from_points\n");
     assert(is_valid_latlon_loop(pt_lat, pt_lon));
 
     const int pt_n = pt_lat->n;
@@ -62,7 +70,7 @@ unique_ptr<S2Loop> loop_from_points(K pt_lat, K pt_lon)
     {
         const double lat = kF(pt_lat)[i];
         const double lon = kF(pt_lon)[i];
-        cerr << "Poly pt: " << lat << " " << lon << endl;
+        DEBUGF("poly point: %f, %f\n", lat, lon);
         points.push_back(S2LatLng::FromDegrees(lat, lon).ToPoint());
     }
 
@@ -109,12 +117,12 @@ extern "C" K covering(K p1, K p2, K maxcells, K maxlevel)
     const double p2lat = kF(p2)[0];
     const double p2lon = kF(p2)[1];
 
-    fprintf(stderr, "p1: %f,%f p2: %f,%f\n", p1lat, p1lon, p2lat, p2lon);
+    DEBUGF("p1: %f,%f p2: %f,%f\n", p1lat, p1lon, p2lat, p2lon);
 
     const int c_max_cells = maxcells->i == ni ? 8 : maxcells->i;
     const int c_max_level = maxlevel->i == ni ? 30 : maxlevel->i;
 
-    fprintf(stderr, "max cells: %d max level: %d\n", c_max_cells, c_max_level);
+    DEBUGF("max cells: %d max level: %d\n", c_max_cells, c_max_level);
 
     S2RegionCoverer c;
     c.set_max_cells(c_max_cells);
@@ -123,14 +131,14 @@ extern "C" K covering(K p1, K p2, K maxcells, K maxlevel)
     std::vector<S2CellId> cids;
     c.GetCovering(S2LatLngRect::FromPointPair(S2LatLng::FromDegrees(p1lat, p1lon), S2LatLng::FromDegrees(p2lat, p2lon)), &cids);
 
-    fprintf(stderr, "cids size: %d\n", cids.size());
+    DEBUGF("cids size: %d\n", cids.size());
 
     K ret = ktn(KJ, cids.size());
 
     for (int i = 0; i < ret->n; i++)
     {
         kJ(ret)[i] = cids[i].id();
-        fprintf(stderr, "cid: %llu\n", cids[i].id());
+        DEBUGF("cid: %llu\n", cids[i].id());
     }
 
     return ret;
@@ -163,14 +171,14 @@ extern "C" K covering2(K p_lats, K p_lons, K maxcells, K maxlevel)
     std::vector<S2CellId> cids;
     c.GetCovering(*poly, &cids);
 
-    fprintf(stderr, "cids size: %d\n", cids.size());
+    DEBUGF("cids size: %d\n", cids.size());
 
     K ret = ktn(KJ, cids.size());
 
     for (int i = 0; i < ret->n; i++)
     {
         kJ(ret)[i] = cids[i].id();
-        fprintf(stderr, "cid: %llu\n", cids[i].id());
+        DEBUGF("cid: %llu\n", cids[i].id());
     }
 
     return ret;
@@ -264,8 +272,6 @@ extern "C" K contains2(K pt_lat, K pt_lon, K lats, K lons)
 
     if (pt_n == 2) // Rectangle
     {
-        cerr << "Rectangle" << endl;
-
         auto llrect = rect_from_points(pt_lat, pt_lon);
         
         #pragma omp parallel for schedule(static) if(len >= 500000) 
@@ -279,8 +285,6 @@ extern "C" K contains2(K pt_lat, K pt_lon, K lats, K lons)
     }
     else // Loop
     {
-        cerr << "Loop" << endl;
-
         auto poly = loop_from_points(pt_lat, pt_lon);
 
         if (! poly->IsValid())
@@ -301,34 +305,3 @@ extern "C" K contains2(K pt_lat, K pt_lon, K lats, K lons)
 
     return ret;
 }
-
-#if 0
-extern "C" K area(K pt_lat, K pt_lon)
-{
-    if (! (is_valid_latlon_rect(pt_lat, pt_lon) || is_valid_latlon_loop(pt_lat, pt_lon))) return krr("type");
-
-    const int pt_n = pt_lat->n;
-    S2LatLng size;
-
-    if (pt_n == 2)
-    {
-        auto llrect = rect_from_points(pt_lat, pt_lon);
-        size = llrect->GetSize();
-    }
-    else
-    {
-        auto poly = loop_from_points(pt_lat, pt_lon);
-        size = poly->GetRectBound().GetSize();
-    }
-
-    const double lat = size.lat().degrees();
-    const double lon = size.lng().degrees();
-    const double latkm = 110.574 * lat;
-    const double lonkm = lon * 111.320 * cos 0.0174533 * lat;
-    const double area = latkm * lonkm;
-
-    cerr << "Size: " << size << " " << latkm << " " << lonkm << " area: " << area << endl;
-
-    return kf(area);
-}
-#endif
