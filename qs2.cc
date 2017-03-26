@@ -102,74 +102,34 @@ extern "C" K cellids(K x, K y)
 }
 
 
-extern "C" K covering(K p1, K p2, K maxcells, K maxlevel)
+extern "C" K covering(K pt_lat, K pt_lon, K maxcells, K maxlevel)
 {
-    if (! is_valid_latlon_rect(p1, p2)) return krr("type");
-
-    if (! (maxcells->t == (-KI) && maxlevel->t == (-KI)))
-    {
-        return krr("type");
-    }
-
-    const double p1lat = kF(p1)[0];
-    const double p1lon = kF(p1)[1];
-
-    const double p2lat = kF(p2)[0];
-    const double p2lon = kF(p2)[1];
-
-    DEBUGF("p1: %f,%f p2: %f,%f\n", p1lat, p1lon, p2lat, p2lon);
+    if (! (is_valid_latlon_rect(pt_lat, pt_lon) || is_valid_latlon_loop(pt_lat, pt_lon))) return krr("type");
+    if (! (maxcells->t == (-KI) && maxlevel->t == (-KI))) return krr("type");
 
     const int c_max_cells = maxcells->i == ni ? 8 : maxcells->i;
     const int c_max_level = maxlevel->i == ni ? 30 : maxlevel->i;
 
-    DEBUGF("max cells: %d max level: %d\n", c_max_cells, c_max_level);
-
     S2RegionCoverer c;
     c.set_max_cells(c_max_cells);
     c.set_max_level(c_max_level);
-
     std::vector<S2CellId> cids;
-    c.GetCovering(S2LatLngRect::FromPointPair(S2LatLng::FromDegrees(p1lat, p1lon), S2LatLng::FromDegrees(p2lat, p2lon)), &cids);
 
-    DEBUGF("cids size: %d\n", cids.size());
-
-    K ret = ktn(KJ, cids.size());
-
-    for (int i = 0; i < ret->n; i++)
+    const int pt_n = pt_lat->n;
+    if (pt_n == 2)
     {
-        kJ(ret)[i] = cids[i].id();
-        DEBUGF("cid: %llu\n", cids[i].id());
+        auto rect = rect_from_points(pt_lat, pt_lon);
+        c.GetCovering(*rect, &cids);
     }
-
-    return ret;
-}
-
-
-extern "C" K covering2(K p_lats, K p_lons, K maxcells, K maxlevel)
-{
-    if (! is_valid_latlon_loop(p_lats, p_lons)) return krr("type");
-
-    if (! (maxcells->t == (-KI) && maxlevel->t == (-KI)))
+    else
     {
-        return krr("type");
+        auto poly = loop_from_points(pt_lat, pt_lon);
+        if (! poly->IsValid())
+        {
+            return krr("poly invalid");
+        }
+        c.GetCovering(*poly, &cids);
     }
-
-    const int c_max_cells = maxcells->i == ni ? 8 : maxcells->i;
-    const int c_max_level = maxlevel->i == ni ? 30 : maxlevel->i;
-
-    auto poly = loop_from_points(p_lats, p_lons);
-
-    if (! poly->IsValid())
-    {
-        return krr("poly invalid");
-    }
-
-    S2RegionCoverer c;
-    c.set_max_cells(c_max_cells);
-    c.set_max_level(c_max_level);
-
-    std::vector<S2CellId> cids;
-    c.GetCovering(*poly, &cids);
 
     DEBUGF("cids size: %d\n", cids.size());
 
@@ -208,36 +168,6 @@ extern "C" K cellidrange(K x)
     return knk(2, a, b);
 }
 
-// Using lat/lon points `p1` and `p2`,
-// return a boolean vector of whether `lats`/`lons`
-// are contained within.
-extern "C" K contains(K p1, K p2, K lats, K lons)
-{
-    if (! is_valid_latlon_rect(p1, p2)) return krr("type");
-    if (! is_valid_latlon(lats, lons)) return krr("type");
-
-    const double p1lat = kF(p1)[0];
-    const double p1lon = kF(p1)[1];
-
-    const double p2lat = kF(p2)[0];
-    const double p2lon = kF(p2)[1];
-
-    auto rect = S2LatLngRect::FromPointPair(S2LatLng::FromDegrees(p1lat, p1lon), S2LatLng::FromDegrees(p2lat, p2lon));
-
-    const int len = lats->n;
-    K ret = ktn(KB, len);
-
-    #pragma omp parallel for schedule(static) if(len >= 500000)
-    for (int i = 0; i < len; i++)
-    {
-        const double lat = kF(lats)[i];
-        const double lon = kF(lons)[i];
-        bool within = rect.Contains(S2LatLng::FromDegrees(lat, lon));
-        kG(ret)[i] = (unsigned char) within ? 1 : 0;
-    }
-
-    return ret;
-}
 
 // Returns true if the loop of `lats`/`lons` is in clockwise order
 extern "C" K clockwise(K lats, K lons)
@@ -260,7 +190,7 @@ extern "C" K clockwise(K lats, K lons)
 }
                             
 
-extern "C" K contains2(K pt_lat, K pt_lon, K lats, K lons)
+extern "C" K contains(K pt_lat, K pt_lon, K lats, K lons)
 {
     if (! (is_valid_latlon_rect(pt_lat, pt_lon) || is_valid_latlon_loop(pt_lat, pt_lon))) return krr("type");
     if (! is_valid_latlon(lats, lons)) return krr("type");
