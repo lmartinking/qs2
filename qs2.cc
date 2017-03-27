@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <thread>
 #include <algorithm>
+#include <memory>
 #include <cmath>
 
 #include "s2latlng.h"
@@ -11,7 +12,9 @@
 #include "s2regioncoverer.h"
 #include "s2loop.h"
 
-#include <omp.h>
+#ifndef NO_OPENMP
+  #include <omp.h>
+#endif // NO_OPENMP
 
 #define KXVER 3
 #include "k.h"
@@ -21,6 +24,8 @@
 #else
   #define DEBUGF                /* nothing */
 #endif
+
+using namespace std;
 
 //
 // Validation
@@ -63,7 +68,7 @@ unique_ptr<S2Loop> loop_from_points(K pt_lat, K pt_lon)
     assert(is_valid_latlon_loop(pt_lat, pt_lon));
 
     const int pt_n = pt_lat->n;
-    std::vector<S2Point> points;
+    vector<S2Point> points;
     points.reserve(pt_n);
 
     for (int i = 0; i < pt_n; i++)
@@ -113,7 +118,7 @@ extern "C" K covering(K pt_lat, K pt_lon, K maxcells, K maxlevel)
     S2RegionCoverer c;
     c.set_max_cells(c_max_cells);
     c.set_max_level(c_max_level);
-    std::vector<S2CellId> cids;
+    vector<S2CellId> cids;
 
     const int pt_n = pt_lat->n;
     if (pt_n == 2)
