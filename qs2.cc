@@ -17,9 +17,9 @@
 #include "k.h"
 
 #ifndef NDEBUG
-#define DEBUGF   /* nothing */
+  #define DEBUGF(fmt, ...)      fprintf(stderr, fmt, ##__VA_ARGS__)
 #else
-#define DEBUGF(fmt, ...)     fprintf(stderr, fmt, ##__VA_ARGS__)
+  #define DEBUGF                /* nothing */
 #endif
 
 //

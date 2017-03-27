@@ -3,6 +3,7 @@
 // Load all functions
 .s2.load: {
   .s2.cellids:: (`$"qs2") 2:(`cellids;2);
+  .s2.cellidrange:: (`$"qs2") 2:(`cellidrange;1);
   .s2.covering_ex:: (`$"qs2") 2:(`covering;4);        // get cell ids
   .s2.covering:: { .s2.covering_ex[x;y;16i;30i] };    
   .s2.contains:: (`$"qs2") 2:(`contains;4);           // poly/rect contains
@@ -67,8 +68,8 @@
   r
   };
 
-// Lookup
-// Works well for small rectangles as majority are
+// Easy Lookup
+// Works well for small rectangles as majority of points are
 // culled before proper clipping
 .s2.lookup: {[plat;plon;t]
   .s2.xcontains[plat;plon;] .s2.xcovered[plat;plon;] t
