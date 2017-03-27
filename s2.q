@@ -1,23 +1,23 @@
+// s2.q - s2 geospatial functions
+
+// Load all functions
 .s2.load: {
   .s2.cellids:: (`$"qs2") 2:(`cellids;2);
-  .s2.covering_ex:: (`$"qs2") 2:(`covering;4);        // rect -> cell ids
-  .s2.covering2_ex:: (`$"qs2") 2:(`covering2;4);      // poly -> cell ids
+  .s2.covering_ex:: (`$"qs2") 2:(`covering;4);        // get cell ids
   .s2.covering:: { .s2.covering_ex[x;y;16i;30i] };    
-  .s2.covering2:: { .s2.covering2_ex[x;y;16i;30i] };
-  .s2.contains:: (`$"qs2") 2:(`contains;4);           // rect
-  .s2.contains2:: (`$"qs2") 2:(`contains2;4);         // poly
-  .s2.cellidrange:: (`$"qs2") 2:(`cellidrange;1);
-
-  .s2.clockwise:: (`$"qs2") 2:(`clockwise;2);
-
-  .s2.area: (`$"qs2") 2:(`area;2);
+  .s2.contains:: (`$"qs2") 2:(`contains;4);           // poly/rect contains
+  .s2.clockwise:: (`$"qs2") 2:(`clockwise;2);         // are poly points clockwise?
   };
+
+// NOTE - tables are expected to have `cid`, `lat` and `lon` columns for many functions.
 
 // Generate Cell IDs
 .s2.xcid: { update cid: .s2.cellids[lat; lon] from x };
-// Arrange for optimal lookup via `cid`
+
+// Arrange table for optimal lookup via `cid`
 .s2.xcidpart: { update cid: `p# cid from `cid xasc x };
 
+// Very approximate conversion of a lat/lon pair (eg: distance) to kilometres
 .s2.ptokm: {[p]
   lat: p 0;
   lon: p 1;
@@ -26,14 +26,16 @@
   (latkm;lonkm)
   };
 
+// NOTE - where parameters are named `plat`/`plon`, the function can accept either:
+//  * a rectangle (2 entries per list)
+//  * a polyline loop (3 or more entries per list)
+
 // Get list of (index;count) rows which are covered by
-// cells of rectangle (lat lon) p1/p2
+// cells of rectangle or loop plat/plon
 // These can be used as paramaters to select[x]...
-.s2.xcoveredrows: {[p1;p2;t]
-  cidsr: .s2.cellidrange .s2.covering[p1;p2];
+.s2.xcoveredrows: {[plat;plon;t]
+  cidsr: .s2.cellidrange .s2.covering[plat;plon];
   rowparams: flip deltas t[`cid] binr/:cidsr;
-  show "size(km): ","," sv string each reverse .s2.ptokm (p1[0] - p2[0]; p2[1] - p1[1]);
-  show "xcoveredrows: ", string sum last flip rowparams;
   rowparams
   };
 
@@ -43,55 +45,31 @@
   raze {[c;t;x] ?[t;();0b;c!c;x]}[c;t;] each r
   };
 
-// Get all cols of rows covered by p1/p2 from t
-.s2.xcovered: {[p1;p2;t]
+// Get all cols of rows covered by cells from plat/plon from t
+.s2.xcovered: {[plat;plon;t]
   c: cols t;
   c: c where c <> `cid;
-  .s2.xgetrows[t;c;] .s2.xcoveredrows[p1;p2;t]
+  .s2.xgetrows[t;c;] .s2.xcoveredrows[plat;plon;t]
   };
 
 // As above, but `maxcells` is maximum coverage for the rect
 // and `maxdepth` is maximum s2 cell depth of any cell
-.s2.xcovered_ex: {[p1;p2;t;maxcells;maxdepth]
-  cidsr: .s2.cellidrange .s2.covering_ex[p1;p2;maxcells;maxdepth];
+.s2.xcovered_ex: {[plan;plon;t;maxcells;maxdepth]
+  cidsr: .s2.cellidrange .s2.covering_ex[plat;plon;maxcells;maxdepth];
   raze {select[x] from y}[;t] each flip deltas t[`cid] binr/:cidsr
   };
 
-// Get from `t` using a proper lat/lon rect clip check (p1/p2)
-.s2.xcontains: {[p1;p2;t]
-  r: select from t where .s2.contains[p1; p2; lat; lon];
-  show "xcontains: ",string count r;
+// Get from `t` using a proper lat/lon rect clip check (plat/plat) where len == 2
+// Get from `t` using a proper polyline clip check (plat/plon) where len >= 3
+// For polyline, plat/plon points must be in CCW order.
+.s2.xcontains: {[plat;plon;t]
+  r: select from t where .s2.contains[plat; plon; lat; lon];
   r
   };
 
+// Lookup
 // Works well for small rectangles as majority are
 // culled before proper clipping
-.s2.lookup: {[rect;t]
-  p1: rect 0; p2: rect 1;
-  .s2.xcontains[p1;p2;] .s2.xcovered[p1;p2;] t
-  };
-
-.s2.lookup2: {[rect;t]
-  p1: rect 0; p2: rect 1;
-  cidsr: .s2.cellidrange .s2.covering[p1;p2];
-  raze {[p1;p2;x;y] select from (select[x] from y) where .s2.contains[p1; p2; lat; lon]}[p1;p2;;t] each flip deltas t[`cid] binr/:cidsr
-  };
-
-.s2.lookup_ex: {[rect;t;maxcells;maxdepth]
-  p1: rect 0; p2: rect 1;
-  .s2.xcontains[p1;p2;] .s2.xcovered_ex[p1;p2;;`int$maxcells;`int$maxdepth] t
-  };
-
-
-.s2.xcovered2_ex: {[plat;plon;t;maxcells;maxdepth]
-  cidsr: .s2.cellidrange .s2.covering2_ex[plat;plon;maxcells;maxdepth];
-  raze {select[x] from y}[;t] each flip deltas t[`cid] binr/:cidsr
-  };
-
-// Get from `t` using a proper polyline clip check (plat/plon)
-// plat/plon points must be in CCW order.
-.s2.xcontains2: {[plat;plon;t]
-  r: select from t where .s2.contains2[plat; plon; lat; lon];
-  show "xcontains: ",string count r;
-  r
+.s2.lookup: {[plat;plon;t]
+  .s2.xcontains[plat;plon;] .s2.xcovered[plat;plon;] t
   };
