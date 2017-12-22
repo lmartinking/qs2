@@ -19,6 +19,7 @@
 .s2.xcidpart: { update cid: `p# cid from `cid xasc x };
 
 // Very approximate conversion of a lat/lon pair (eg: distance) to kilometres
+// NOTE: Does not take into account that lat distances change the further away from the equator you are...
 .s2.ptokm: {[p]
   lat: p 0;
   lon: p 1;

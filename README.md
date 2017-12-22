@@ -3,6 +3,14 @@ qs2
 
 Google S2 geometry library extension for kdb+/q.
 
+## Get
+
+You may need to init git submodules:
+
+```
+    git submodule update --init --recursive
+```
+
 ## Build
 
 * Requires `libcrypto` to be installed (eg: `brew install openssl` or `apt-get install libssl-dev`)
@@ -12,11 +20,11 @@ Google S2 geometry library extension for kdb+/q.
     $ cp qrapidjson_{m32,m64,l32,l64}.so /path/to/q/bin
 ```
 
-* `USE_CLANG` will use Clang instead of GCC-6 on MacOS. OpenMP will be disabled.
+* `USE_CLANG` will use Clang instead of GCC-7 on MacOS. OpenMP will be disabled.
 * `NO_OPENMP` will disable OpenMP (not recommended).
 
-NOTE: By default, on MacOS, `qs2` will use `gcc-6` in order to get the performance benefits of OpenMP.
-You will need to: `brew install gcc-6`.
+NOTE: By default, on MacOS, `qs2` will use `gcc-7` in order to get the performance benefits of OpenMP.
+You will need to: `brew install gcc-7`.
 
 ## Use
 
@@ -29,7 +37,7 @@ NOTE: You might need to set `DYLD_LIBRARY_PATH` or `LD_LIBRARY_PATH` environment
 
 The `x{name}` family of functions provided by `qs2` work with tables.
 
-Tables must have `lat`, `lon` and `cid` columns.
+Tables must have `lat`, `lon` and can have `cid` columns.
 
 The `cid` column can be generated from `lat`/`lon` using `.s2.xcid` and
 arranged for optimal lookup using `.s2.xcidpart`.
