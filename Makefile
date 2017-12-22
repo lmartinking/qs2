@@ -18,7 +18,7 @@ else ifeq ($(shell uname),Darwin)
     NO_OPENMP=1
     CXX=clang++
   else
-    CXX=g++-6 # from homebrew
+    CXX=g++-7 # from homebrew
   endif
   OPENSSL_PATH := /usr/local/Cellar/openssl/1.0.2k
   OPENSSL_INC=$(OPENSSL_PATH)/include
