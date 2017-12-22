@@ -85,3 +85,11 @@ This techique is particularly performant when the rectangle or polygon has a sma
 
 When the bounds is large (eg: the size of Victoria or greater), it may be faster to use `.s2.contains` directly (no pre-cull).
 
+## Licence
+
+LGPLv3. See `LICENSE` and `COPYING.LESSER`.
+
+Copyright (c) 2016 Lucas Martin-King.
+
+Other parts of this software (eg: RapidJSON) are covered by other licences.
+
